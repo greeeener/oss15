@@ -30,7 +30,7 @@ Out:
   [ CPUFloatType{2,2} ]
 
 
-Do a tensor operation:
+tensor operation 수행:
 
 .. code-block:: cpp
 
@@ -45,7 +45,7 @@ Out:
    3  3
   [ CPUFloatType{2,2} ]
 
-``y`` 가 작업의 결과로 생성되었으므로, 이것은 ``grad_fn``을 갖습니다.
+``y`` 가 operation의 결과로 생성되었으므로, 이것은 ``grad_fn`` 을 갖습니다.
 
 .. code-block:: cpp
 
@@ -57,7 +57,7 @@ Out:
 
   AddBackward1
 
-``y``에서 더 많은 작업 수행
+``y`` 에서 더 많은 operation 수행
 
 .. code-block:: cpp
 
@@ -104,8 +104,8 @@ Out:
   true
   SumBackward0
 
-지금 backprop 합시다. ``out``에는 하나의 scalar가 포함되어 있기 때문에, ``out.backward()``
-는 ``out.backward(torch::tensor(1.))``와 같습니다.
+지금 backprop 합시다. ``out`` 에는 하나의 scalar가 포함되어 있기 때문에, ``out.backward()``
+는 ``out.backward(torch::tensor(1.))`` 와 같습니다.
 
 .. code-block:: cpp
 
@@ -125,7 +125,7 @@ Out:
    4.5000  4.5000
   [ CPUFloatType{2,2} ]
 
-``4.5``의 매트릭스를 얻었어야 했습니다. 이 값에 도달하는 방법에 대한 설명은,
+``4.5`` 의 매트릭스를 얻었어야 했습니다. 이 값에 도달하는 방법에 대한 설명은,
 `이 튜토리얼의 해당 섹션을 참조하십시오<https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html#gradients>`_.
 
 이제 vector -Jacobian product의 예를 살펴 보겠습니다:
@@ -170,7 +170,7 @@ Out:
       0.1024
   [ CPUFloatType{3} ]
 
-또한 ``torch::NoGradGuard``를 코드 블록에 삽입 하여 gradients가 필요한 tensor의 추적 기록에서 autograd를 중지 할 수도 있습니다.
+또한 ``torch::NoGradGuard`` 를 코드 블록에 삽입 하여 gradients가 필요한 tensor의 추적 기록에서 autograd를 중지 할 수도 있습니다.
 
 .. code-block:: cpp
 
@@ -191,7 +191,7 @@ Out:
   true
   false
 
-또는 ``.detach()``를 사용하여 동일한 콘텐츠를 포함하지만 gradients가 필요하지 않은 새 tensor를 가져옵니다:
+또는 ``.detach()`` 를 사용하여 동일한 콘텐츠를 포함하지만 gradients가 필요하지 않은 새 tensor를 가져옵니다:
 
 .. code-block:: cpp
 
@@ -215,7 +215,7 @@ C++에서 고차 gradient 연산
 ---------------------------------------
 
 고차 gradient의 응용 프로그램 중 하나는 gradient 패널티를 계산하는 것입니다.
- ``torch::autograd::grad``를 사용하여 예제를 보겠습니다:
+ ``torch::autograd::grad`` 를 사용하여 예제를 보겠습니다:
 
 .. code-block:: cpp
 
@@ -250,7 +250,7 @@ Out:
   -0.1683 -0.1052  0.0355  0.1024
   [ CPUFloatType{3,4} ]
 
-사용 방법에 대한 자세한 내용은``torch::autograd::backward``
+사용 방법에 대한 자세한 내용은 ``torch::autograd::backward``
 (`link <https://pytorch.org/cppdocs/api/function_namespacetorch_1_1autograd_1afa9b5d4329085df4b6b3d4b4be48914b.html>`_)
 및 ``torch::autograd::grad``
 (`link <https://pytorch.org/cppdocs/api/function_namespacetorch_1_1autograd_1a1e03c42b14b40c306f9eb947ef842d9c.html>`_)
@@ -261,12 +261,12 @@ C ++에서 사용자 지정 autograd 함수 사용
 
 (`이 튜토리얼 <https://pytorch.org/docs/stable/notes/extending.html#extending-torch-autograd>`_ 에서 수정됨)
 
-``torch::autograd``에 새로운 기본적인 운영을 추가하려면 각 운영마다 새로운 ``torch::autograd::Function`` 하위 클래스를 구현해야 합니다.
-``torch::autograd::Function``은 ``torch::autograd``가 결과와 gradient를 계산하고,
-operation history를 인코딩하는데 사용됩니다. 모든 새 기능을 사용하려면 ``forward``와 ``backward``, 두 가지 메소드를 구현해야합니다.
+``torch::autograd`` 에 새로운 기본적인 운영을 추가하려면 각 운영마다 새로운 ``torch::autograd::Function`` 하위 클래스를 구현해야 합니다.
+``torch::autograd::Function`` 은 ``torch::autograd`` 가 결과와 gradient를 계산하고,
+operation history를 인코딩하는데 사용됩니다. 모든 새 기능을 사용하려면 ``forward`` 와 ``backward``, 두 가지 메소드를 구현해야합니다.
 자세한 사항은 `이 링크 <https://pytorch.org/cppdocs/api/structtorch_1_1autograd_1_1_function.html>`_ 를 참조하십시오.
 
-아래는 ``torch::nn``에서 ``Linear``함수에 대한 코드를 찾을 수 있습니다:
+아래는 ``torch::nn`` 에서 ``Linear`` 함수에 대한 코드를 찾을 수 있습니다:
 
 .. code-block:: cpp
 
@@ -308,7 +308,7 @@ operation history를 인코딩하는데 사용됩니다. 모든 새 기능을 �
     }
   };
 
-그런 다음 ``LinearFunction``을 다음과 같이 사용할 수 있습니다:
+그런 다음 ``LinearFunction`` 을 다음과 같이 사용할 수 있습니다:
 
 .. code-block:: cpp
 
@@ -352,12 +352,12 @@ Out:
   
     static tensor_list backward(AutogradContext *ctx, tensor_list grad_outputs) {
       // 논쟁이 있었던 만큼 많은 입력 gradient를 돌려준다.
-      // 전달할 non-tensor argument의 gradient는 `torch::Tensor()`여야 한다.
+      // 전달할 non-tensor argument의 gradient는 `torch::Tensor()` 여야 한다.
       return {grad_outputs[0] * ctx->saved_data["constant"].toDouble(), torch::Tensor()};
     }
   };
 
-그 다음에 ``MulConstant``를 다음과 같이 사용할 수 있습니다:
+그 다음에 ``MulConstant`` 를 다음과 같이 사용할 수 있습니다:
 
 .. code-block:: cpp
 
@@ -375,7 +375,7 @@ Out:
    5.5000
   [ CPUFloatType{2} ]
 
-``torch::autograd::Function``에 대한 자세한 내용은
+``torch::autograd::Function`` 에 대한 자세한 내용은
 `해당 설명서 <https://pytorch.org/cppdocs/api/structtorch_1_1autograd_1_1_function.html>`_ 를 참조하십시오.
 
 Python에서 C++로 autograd 코드 변역
