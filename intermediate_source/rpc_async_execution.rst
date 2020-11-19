@@ -91,21 +91,20 @@ PS 클래스의 구현을 보여줍니다. ``update_and_fetch_model`` 방법은 
         @staticmethod
         @rpc.functions.async_execution
         def update_and_fetch_model(ps_rref, grads):
-            # Using the RRef to retrieve the local PS instance
+            # 로컬 PS 인스턴스를 검색하기 위해 RRef 사용
             self = ps_rref.local_value()
             with self.lock:
                 self.curr_update_size += 1
-                # accumulate gradients into .grad field
+                # 변화도를 .grad 필드에 저장(축적)
                 for p, g in zip(self.model.parameters(), grads):
                     p.grad += g
 
-                # Save the current future_model and return it to make sure the
-                # returned Future object holds the correct model even if another
-                # thread modifies future_model before this thread returns.
+                # 이 스레드가 반환되기 전에 다른 future object 가 올바른 model을 홀딩 하는지 검수하기 위해
+                # 현재 future_model 을 저장하고 반환
                 fut = self.future_model
 
                 if self.curr_update_size >= self.batch_update_size:
-                    # update the model
+                    # 모델 업데이트
                     for p in self.model.parameters():
                         p.grad /= self.batch_update_size
                     self.curr_update_size = 0
@@ -114,6 +113,8 @@ PS 클래스의 구현을 보여줍니다. ``update_and_fetch_model`` 방법은 
                     # by settiing the result on the Future object, all previous
                     # requests expecting this updated model will be notified and
                     # the their responses will be sent accordingly.
+                    # future object 의 결과값을 세팅함으로써, 이 모델을 업데이트 하기 위한
+                    # 모든 이전 리퀘스트에게 결과값을 전달
                     fut.set_result(self.model)
                     self.future_model = torch.futures.Future()
 
@@ -145,9 +146,9 @@ PS 클래스의 구현을 보여줍니다. ``update_and_fetch_model`` 방법은 
 
         def train(self):
             name = rpc.get_worker_info().name
-            # get initial model parameters
+            # model 파라미터 초기값 설정
             m = self.ps_rref.rpc_sync().get_model().cuda()
-            # start training
+            # 트레이닝 시작
             for inputs, labels in self.get_next_batch():
                 self.loss_fn(m(inputs), labels).backward()
                 m = rpc.rpc_sync(
@@ -252,14 +253,14 @@ Batch-Processing CartPole Solver
             start_step = 0
             for step in range(n_steps):
                 state = torch.from_numpy(state).float().unsqueeze(0)
-                # send the state to the agent to get an action
+                # agent에게 현재 state 전달하여 action 실행
                 action = rpc.rpc_sync(
                     agent_rref.owner(),
                     self.select_action,
                     args=(agent_rref, self.id, state)
                 )
 
-                # apply the action to the environment, and get the reward
+                # environment 에게 action 전달하고 reward를 get
                 state, reward, done, _ = self.env.step(action)
                 rewards[step] = reward
 
@@ -383,15 +384,15 @@ Batch-Processing CartPole Solver
         def run_episode(self, n_steps=0):
             futs = []
             for ob_rref in self.ob_rrefs:
-                # make async RPC to kick off an episode on all observers
+                # async RPC가 다른 observers를 차단하게 함
                 futs.append(ob_rref.rpc_async().run_episode(self.agent_rref, n_steps))
 
-            # wait until all obervers have finished this episode
+            # 이 에피소드 가 끝날때까지 모든 관찰자 대기
             rets = torch.futures.wait_all(futs)
             rewards = torch.stack([ret[0] for ret in rets]).cuda().t()
             ep_rewards = sum([ret[1] for ret in rets]) / len(rets)
 
-            # stack saved probs into one tensor
+            # stack 은 prob 를 tensor로 저장
             if self.batch:
                 probs = torch.stack(self.saved_log_probs)
             else:
@@ -403,11 +404,11 @@ Batch-Processing CartPole Solver
             self.optimizer.step()
             self.optimizer.zero_grad()
 
-            # reset variables
+            # 변수 재설정
             self.saved_log_probs = [] if self.batch else {k:[] for k in range(len(self.ob_rrefs))}
             self.states = torch.zeros(len(self.ob_rrefs), 1, 4)
 
-            # calculate running rewards
+            # running reward 계산
             self.running_reward = 0.5 * ep_rewards + 0.5 * self.running_reward
             return ep_rewards, self.running_reward
 
@@ -423,7 +424,7 @@ Batch-Processing CartPole Solver
         os.environ['MASTER_ADDR'] = 'localhost'
         os.environ['MASTER_PORT'] = '29500'
         if rank == 0:
-            # rank0 is the agent
+            # rank0 은 agent
             rpc.init_rpc(AGENT_NAME, rank=rank, world_size=world_size)
 
             agent = Agent(world_size, batch)
@@ -434,9 +435,9 @@ Batch-Processing CartPole Solver
                     print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
                         i_episode, last_reward, running_reward))
         else:
-            # other ranks are the observer
+            # 다른 rank 들은 observer
             rpc.init_rpc(OBSERVER_NAME.format(rank), rank=rank, world_size=world_size)
-            # observers passively waiting for instructions from agents
+            # observer 들은 수동적으로 agent 의 지시를 기다림
         rpc.shutdown()
 
 
