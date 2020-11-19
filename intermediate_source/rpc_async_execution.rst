@@ -126,6 +126,7 @@ PS 클래스의 구현을 보여줍니다. ``update_and_fetch_model`` 방법은 
 변화도를 보고하고 동일한 RPC 리퀘스트의 리턴값을 통해 업데이트된 파라미터를 반환받습니다. 트레이너의 구현에선
 대상함수가 ``@rpc.functions.async_execution``로 마크 되는지 여부는 결과에 차이가 없습니다. 트레이너는 단순히
 ``rpc_sync``를 사용하여 ``update_and_fetch_model``을 호출하고 이 모델은 업데이트 된 모델이 반환 될 때까지 트레이너에서 차단합니다.
+
 .. code:: python
 
     batch_size, image_w, image_h  = 20, 64, 64
