@@ -1,12 +1,13 @@
-Distributed Pipeline Parallelism Using RPC
+RPC를 이용한 분산 파이프라인 병렬 처리
 ==========================================
-**Author**: `Shen Li <https://mrshenli.github.io/>`_
+**저자**: `Shen Li <https://mrshenli.github.io/>`_
+**번역**: `양수진 </https://github.com/musuys>`_
 
-Prerequisites:
+선수과목(Prerequisites):
 
--  `PyTorch Distributed Overview <../beginner/dist_overview.html>`__
--  `Single-Machine Model Parallel Best Practices <https://pytorch.org/tutorials/intermediate/model_parallel_tutorial.html>`__
--  `Getting started with Distributed RPC Framework <https://pytorch.org/tutorials/intermediate/rpc_tutorial.html>`__
+-  `PyTorch 분산 개요 <../beginner/dist_overview.html>`__
+-  `단일 머신 모델 병렬 모범 사례 <https://pytorch.org/tutorials/intermediate/model_parallel_tutorial.html>`__
+-  `분산 RPC 프레임 워크 시작하기 <https://pytorch.org/tutorials/intermediate/rpc_tutorial.html>`__
 -  RRef helper functions:
    `RRef.rpc_sync() <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.RRef.rpc_sync>`__,
    `RRef.rpc_async() <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.RRef.rpc_async>`__, and
@@ -14,48 +15,39 @@ Prerequisites:
 
 
 
-This tutorial uses a Resnet50 model to demonstrate implementing distributed
-pipeline parallelism with `torch.distributed.rpc <https://pytorch.org/docs/master/rpc.html>`__
-APIs. This can be viewed as the distributed counterpart of the multi-GPU
-pipeline parallelism discussed in
-`Single-Machine Model Parallel Best Practices <model_parallel_tutorial.html>`_.
+이 튜토리얼에서는 Resnet50 모델을 사용하여 `torch.distributed.rpc <https://pytorch.org/docs/master/rpc.html>`__
+APIs로 분산 파이프 라인 병렬 처리를 구현합니다. 이는 `단일 머신 모델 병렬 모범 사례 <model_parallel_tutorial.html>`_ 에서 논의된 다중 GPU 파이프라인 병렬 처리의 분산된 대안으로 볼 수 있습니다.
 
-.. note:: This tutorial requires PyTorch v1.6.0 or above.
 
-.. note:: Full source code of this tutorial can be found at
-    `pytorch/examples <https://github.com/pytorch/examples/tree/master/distributed/rpc/pipeline>`__.
+.. note:: 이 튜토리얼에서는 PyTorch v1.6.0 이상이 필요합니다.
+
+.. note:: 이 튜토리얼의 전체 소스 코드는
+    `pytorch/examples <https://github.com/pytorch/examples/tree/master/distributed/rpc/pipeline>`__ 에서 찾을 수 있습니다.
 
 Basics
 ------
 
 
-The previous tutorial, `Getting Started with Distributed RPC Framework <rpc_tutorial.html>`_
-shows how to use `torch.distributed.rpc <https://pytorch.org/docs/master/rpc.html>`_
-to implement distributed model parallelism for an RNN model. That tutorial uses
-one GPU to host the ``EmbeddingTable``, and the provided code works fine.
-However, if a model lives on multiple GPUs, it would require some extra steps to
-increase the amortized utilization of all GPUs. Pipeline parallelism is one type
-of paradigm that can help in this case.
+이전 튜토리얼, `분산 RPC 프레임워크 시작하기 <rpc_tutorial.html>`_ 에서는 `torch.distributed.rpc <https://pytorch.org/docs/master/rpc.html>`_
+ 를 사용하여 RNN 모델에 대한 분산 모델 병렬 처리를 구현하는 방법을 보여줍니다. 이 튜토리얼은 하나의 GPU를 사용하여 ``EmbeddingTable`` 을 호스팅하며, 제공된 코드는 정상 작동합니다.
+하지만 모델이 여러 GPU에 있는 경우,  모든 GPU의 분할 사용률을 높이기 위해 몇 가지 추가 단계가 필요합니다. 파이프라인 병렬 처리는 이 경우에 도움이 될 수 있는 패러다임의 한 유형입니다.
 
-In this tutorial, we use ``ResNet50`` as an example model which is also used by
-the `Single-Machine Model Parallel Best Practices <model_parallel_tutorial.html>`_
-tutorial. Similarly, the ``ResNet50`` model is divided into two shards and
-the input batch is partitioned into multiple splits and fed into the two model
-shards in a pipelined fashion. The difference is that, instead of parallelizing
-the execution using CUDA streams, this tutorial invokes asynchronous RPCs. So,
-the solution presented in this tutorial also works across machine boundaries.
-The remainder of this tutorial presents the implementation in four steps.
+이 튜토리얼에서는, ``ResNet50`` 을
+`단일 머신 모델 병렬 모범 사례 <model_parallel_tutorial.html>`_ 에서도 사용되는 예제 모델로 사용합니다.
+마찬가지로, ``ResNet50`` 모델은 두개의 shard로 나뉘고 입력 배치도 여러 개의 분할로 분할되어 파이프라인 방식으로 두개의 모델 shard로 공급됩니다.
+차이점은, 차이점은 CUDA 스트림을 사용하여 실행을 병렬화하는 대신에 이 튜토리얼은 비동기 RPC를 호출한다는 것입니다.
+따라서, 이 튜토리얼에 제시된 솔루션은 시스템 경계에서도 작동합니다.
+이 튜토리얼의 나머지 부분에서는 구현을 4단계로 설명합니다.
 
 
 
-Step 1: Partition ResNet50 Model
+Step 1: ResNet50 모델 분할
 --------------------------------
 
-This is the preparation step which implements ``ResNet50`` in two model shards.
-The code below is borrowed from the
-`ResNet implementation in torchvision <https://github.com/pytorch/vision/blob/7c077f6a986f05383bcb86b535aedb5a63dd5c4b/torchvision/models/resnet.py#L124>`_.
-The ``ResNetBase`` module contains the common building blocks and attributes for
-the two ResNet shards.
+이 단계는  ``ResNet50`` 을 두 개의 모델 shard에 구현하는 준비 단계입니다.
+아래 코드는
+`torchvision에서의 ResNet 구현 <https://github.com/pytorch/vision/blob/7c077f6a986f05383bcb86b535aedb5a63dd5c4b/torchvision/models/resnet.py#L124>`_ 에서 차용한 것입니다.
+``ResNetBase`` 모듈에는 두 개의 ResNet shard에 대한 공통 구성 요소와 속성이 포함되어 있습니다.
 
 
 .. code:: python
