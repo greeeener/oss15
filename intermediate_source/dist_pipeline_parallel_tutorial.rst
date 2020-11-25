@@ -25,7 +25,7 @@ APIs로 분산 파이프 라인 병렬 처리를 구현합니다. 이는 `단일
     `pytorch/examples <https://github.com/pytorch/examples/tree/master/distributed/rpc/pipeline>`__ 에서 찾을 수 있습니다.
 
 Basics
-------------
+----------------
 
 
 이전 튜토리얼, `분산 RPC 프레임워크 시작하기 <rpc_tutorial.html>`_ 에서는 `torch.distributed.rpc <https://pytorch.org/docs/master/rpc.html>`_ 를 사용하여 RNN 모델에 대한 분산 모델 병렬 처리를 구현하는 방법을 보여줍니다.
