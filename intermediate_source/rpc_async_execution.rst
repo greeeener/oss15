@@ -12,9 +12,9 @@
 -  `RPC Asynchronous Execution Decorator <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.functions.async_execution>`__
 
 
-이 튜토리얼에서는 `@rpc.functions.async_execution <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.functions.async_execution>`__데코레이터를 사용하여
+이 튜토리얼에서는 `@rpc.functions.async_execution <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.functions.async_execution>`__ 데코레이터를 사용하여
 일괄처리(batch-processing) RPC 어플리케이션을 빌드하는 방법을 설명합니다. 이 방법은 차단된 RPC 스레드 수를 줄이고 수신자의 CUDA 작업을 통합하여 학습 속도를 높이는 데 도움이 됩니다.
-이 아이디어는 `Batch Inference with TorchServer <https://pytorch.org/serve/batch_inference_with_ts.html>`__와 동일한 아이디어를 공유합니다.
+이 아이디어는 `Batch Inference with TorchServer <https://pytorch.org/serve/batch_inference_with_ts.html>`__ 와 동일한 아이디어를 공유합니다.
 
 
 .. note:: 이 튜토리얼은 PyTorch v1.6.0 이상을 필요로 합니다.
@@ -22,7 +22,7 @@
 기초
 ------
 
-이전 튜토리얼들에서는 `torch.distributed.rpc <https://pytorch.org/docs/stable/rpc.html>`__를 사용하여 분산 학습을 구축하는 단계를 확인했습니다.
+이전 튜토리얼들에서는 `torch.distributed.rpc <https://pytorch.org/docs/stable/rpc.html>`__ 를 사용하여 분산 학습을 구축하는 단계를 확인했습니다.
 하지만, RPC 리퀘스트가 처리 될 때 수신자 측에서 일어나는 일은 자세히 설명하지 않았습니다. PyTorch v1.5 부터 각 RPC 리퀘스트는 호출한 수신자에게
 해당 함수가 반환될 때까지 해당 리퀘스트에서 함수를 실행합니다. 이는 많은 사례에 적용되지만, 한 가지 주의사항이 있습니다. 사용자의 함수에서
 IO의 블록 (예 : 중첩 된 RPC 호출 또는 시그널링 포함)차단 해제를위한 다른 RPC 요청이있는 경우 수신자의 RPC 스레드는 IO가 완료되거나 신호 이벤트가 발생할 때까지 유휴
@@ -32,7 +32,7 @@ IO의 블록 (예 : 중첩 된 RPC 호출 또는 시그널링 포함)차단 해�
 v1.6.0 버전부터 PyTorch 는 두 가지 새로운 개념을 도입하여 이 문제를 해결합니다 :
 
 
-* `torch.futures.Future <https://pytorch.org/docs/master/futures.html>`__로 비동기 실행을 캡슐화하며, 콜백 함수 설치를 지원합니다.
+* `torch.futures.Future <https://pytorch.org/docs/master/futures.html>`__ 로 비동기 실행을 캡슐화하며, 콜백 함수 설치를 지원합니다.
 
 * `@rpc.functions.async_execution <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.functions.async_execution>`__
   데코레이터는 어플리케이션이 수신자에게 대상 함수의 반환 여부를 전달하게 하고 실행 중에 여러번 일시 중지, 양보를 가능하게 합니다.
@@ -173,7 +173,7 @@ Batch-Processing CartPole Solver
 배치 프로세싱을 활용한 카트-폴(CartPole Solver)
 --------------------------------
 
-이 섹션에서는 `OpenAI Gym <https://gym.openai.com/>`__의 CartPole-v1을 batch processing RPC 의 활용 효과를 보여주기 위한 예시로써 사용합니다.
+이 섹션에서는 `OpenAI Gym <https://gym.openai.com/>`__ 의 CartPole-v1을 batch processing RPC 의 활용 효과를 보여주기 위한 예시로써 사용합니다.
 최적의 카트폴 알고리즘이나 상극의 RL 문제를 해결하는것이 목적이 아니라, `@rpc.functions.async_execution <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.functions.async_execution>`__
 의 활용을 확인하는것 이 목적임을 유의하시기 바랍니다. 따라서 매우 간단한 정책과 보상 계산 전략을 사용하고 다중 관찰자 단일 에이전트 배치 RPC 구현에 중점을 둡니다.
 우리는 아래에 표시된 이전 튜토리얼과 유사한 ``Policy`` 모델을 사용할 것입니다. 이전 튜토리얼과 비교했을때, 생성자가 ``F.softmax`` 를 위한 ``dim`` 파라미터를 제어하는 추가적인
@@ -232,7 +232,7 @@ Batch-Processing CartPole Solver
 
 
 
-이전 튜토리얼 `Getting started with Distributed RPC Framework <https://pytorch.org/tutorials/intermediate/rpc_tutorial.html>`__과 비교했을때
+이전 튜토리얼 `Getting started with Distributed RPC Framework <https://pytorch.org/tutorials/intermediate/rpc_tutorial.html>`__ 과 비교했을때
 관측자의 구성이 약간 달라졌습니다. 환경이 정지되었을때 종료하는 대신, 모든 에피소드에서 항상 ``n_steps`` 반복을 실행합니다. 환경의 상태가 
 돌아오면, 관찰자는 단순히 환경을 재설정하고 다시 시작합니다. 이 디자인을 사용하면 에이전트는 모든 관찰자를 고정 된 크기의 텐서로 압축 할 수 있기 때문에
 고정된 수의 상태를 수신합니다. 매 단계에서, ``Observer`` 는 RPC를 사용하여 ``Agent`` 에 상태를 보내고 반환 값을 통한 액션을 가져옵니다. 매 에피소드가
