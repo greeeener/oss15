@@ -173,7 +173,7 @@ Step 2: ResNet50 모델 shard를 하나의 모듈로 연결
 그다음, ``DistResNet50`` 모듈을 두개의 샤드를 조립하고 파이프 라인 병렬 로직을
 수행하도록 생성합니다. 생성자에서는, 두개의``rpc.remote`` 호출을 실행해, 두개의 shard를 각기 
 다른 두개의 RPC 작업자에 배치하고, 호출된 두 모델의 ``RRef`` 파트를 각각 유지하여 foward 패스에서
-참조 가능하게 합니다. ``foward``함수는 입력 배치를 여러 마이크로 배치로 분할하고 파이프라인 방식으로 두 
+참조 가능하게 합니다. ``foward`` 함수는 입력 배치를 여러 마이크로 배치로 분할하고 파이프라인 방식으로 두 
 모엘 파트에 마이크로 배치를 피드합니다. 먼저, ``rpc.rmote`` 를 호출하여 첫번째 shard를 마이크로 배치에 적용한 다음
 ``RRef`` 중간 출력을 두번째 모델 shard에 반환합니다. 그 후, 모든 마이크로 출력의 ``Future`` 를 수집하고 
 루프 이후 모든 출력을 대기합니다. ``remote()`` 와 ``rpc_async()`` 모두 즉시 반환되고 비동기적으로 실행됩니다.
@@ -228,23 +228,12 @@ Step 2: ResNet50 모델 shard를 하나의 모듈로 연결
 Step 3: 학습 루프 정의하기
 
 
-After defining the model, let us implement the training loop. We use a
-dedicated "master" worker to prepare random inputs and labels, and control the
-distributed backward pass and distributed optimizer step. It first creates an
-instance of the ``DistResNet50`` module. It specifies the number of
-micro-batches for each batch, and also provides the name of the two RPC workers
-(i.e., "worker1", and "worker2"). Then it defines the loss function and creates
-a ``DistributedOptimizer`` using the ``parameter_rrefs()`` helper to acquire a
-list of parameter ``RRefs``. Then, the main training loop is very similar to
-regular local training, except that it uses ``dist_autograd`` to launch
-backward and provides the ``context_id`` for both backward and optimizer
-``step()``.
 모델을 정의했으므로 , 이번에는 학습 루프를 구현해 보겠습니다. 우리는 랜덤 입력들과 라벨들을
 전담하며 분산된 역방향 패스 및 최적화 단계를 컨트롤 하는 ``master`` 작업자를 사용합니다.
 작업자는 먼저 ``DistResNet50`` 모듈의 인스턴스를 생성합니다. 그 다음, 각 배치에 대한 마이크로 배치의 수를
 지정하고, 두 RPC 작업자의 이름도 제공합니다.(예 : "worker1" 및 "worker2") 다음으로, loss 함수를 정의하고
 ``RRefs`` 의 매개변수 목록을 얻도록 ``parameter_rrefs()`` 헬퍼를 사용하여 ``DistributedOptimizer`` 를 생성합니다.
-이후의 주 학습 루프는 ``dist_autograd``를 사용하여 시작하는 것을 제외하곤, 일반적인 로컬 학습과 매우 유사합니다. 
+이후의 주 학습 루프는 ``dist_autograd`` 를 사용하여 시작하는 것을 제외하곤, 일반적인 로컬 학습과 매우 유사합니다. 
 이는 역방향 실행 및 역방향 프로그램 모두에 대해 ``context_id`` 를 제공하고 ``step()`` 를 최적화 하기 위함입니다.
 
 
