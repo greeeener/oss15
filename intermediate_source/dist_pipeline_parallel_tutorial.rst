@@ -25,12 +25,12 @@ APIs로 분산 파이프 라인 병렬 처리를 구현합니다. 이는 `단일
     `pytorch/examples <https://github.com/pytorch/examples/tree/master/distributed/rpc/pipeline>`__ 에서 찾을 수 있습니다.
 
 Basics
-------
+------------
 
 
-이전 튜토리얼, `분산 RPC 프레임워크 시작하기 <rpc_tutorial.html>`_ 에서는 `torch.distributed.rpc <https://pytorch.org/docs/master/rpc.html>`_
- 를 사용하여 RNN 모델에 대한 분산 모델 병렬 처리를 구현하는 방법을 보여줍니다. 이 튜토리얼은 하나의 GPU를 사용하여 ``EmbeddingTable`` 을 호스팅하며, 제공된 코드는 정상 작동합니다.
-하지만 모델이 여러 GPU에 있는 경우,  모든 GPU의 분할 사용률을 높이기 위해 몇 가지 추가 단계가 필요합니다. 파이프라인 병렬 처리는 이 경우에 도움이 될 수 있는 패러다임의 한 유형입니다.
+이전 튜토리얼, `분산 RPC 프레임워크 시작하기 <rpc_tutorial.html>`_ 에서는 `torch.distributed.rpc <https://pytorch.org/docs/master/rpc.html>`_ 를 사용하여 RNN 모델에 대한 분산 모델 병렬 처리를 구현하는 방법을 보여줍니다.
+이 튜토리얼은 하나의 GPU를 사용하여 ``EmbeddingTable`` 을 호스팅하며, 제공된 코드는 정상 작동합니다. 하지만 모델이 여러 GPU에 있는 경우, 모든 GPU의 분할 사용률을 높이기 위해 몇 가지 추가 단계가 필요합니다.
+파이프라인 병렬 처리는 이 경우에 도움이 될 수 있는 패러다임의 한 유형입니다.
 
 이 튜토리얼에서는, ``ResNet50`` 을
 `단일 머신 모델 병렬 모범 사례 <model_parallel_tutorial.html>`_ 에서도 사용되는 예제 모델로 사용합니다.
