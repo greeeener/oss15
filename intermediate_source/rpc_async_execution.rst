@@ -38,8 +38,8 @@ v1.6.0 버전부터 PyTorch 는 두 가지 새로운 개념을 도입하여 이 
   데코레이터는 어플리케이션이 수신자에게 대상 함수의 반환 여부를 전달하게 하고 실행 중에 여러번 일시 중지, 양보를 가능하게 합니다.
 
 
-이 두 도구를 사용하면, 응용 프로그램 코드가 사용자 함수를 여러개의 작은 함수들로 분할하여, ``Future``오브젝트의 콜백함수로 연결하고
-최종 결과를 포함하는 ``Future``오브젝트를 반환합니다. 수신자측은 ``Future``오브젝트를 수신할 때, 최종 결과가 준비된 상태라면,
+이 두 도구를 사용하면, 응용 프로그램 코드가 사용자 함수를 여러개의 작은 함수들로 분할하여, ``Future`` 오브젝트의 콜백함수로 연결하고
+최종 결과를 포함하는 ``Future`` 오브젝트를 반환합니다. 수신자측은 ``Future`` 오브젝트를 수신할 때, 최종 결과가 준비된 상태라면,
 콜백으로서 준비 및 통신을 후속 RPC 응답으로써 설치합니다. 이 경우, 수신측에서는 최종 결과값이 리턴될 때까지 기다리며 스레드를 
 차단할 필요가 없습니다. 간단한 예제는 다음 API 문서를 참조하세요.`@rpc.functions.async_execution <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.functions.async_execution>`__
 
@@ -57,11 +57,11 @@ v1.6.0 버전부터 PyTorch 는 두 가지 새로운 개념을 도입하여 이 
 동기화된 파라미터 서버 학습 어플리케이션을 하나의 파라미터 서버(PS) 와 다중 트레이너로 사용하는 경우를 생각해봅시다.
 이 어플리케이션에선, PS는 파라미터를 유지하고 모든 트레이너가 변화도(gradients)를 보고할때 까지 기다립니다. 매 시퀀스마다
 모든 트레이너들에게 변화도를 수신할때까지 기다린 후, 한번에 모든 파라미터를 업데이트 합니다. 아래에 있는 코드는
-PS 클래스의 구현을 보여줍니다. ``update_and_fetch_model`` 방법은 ``@rpc.functions.async_execution``을 사용하여 decorated
+PS 클래스의 구현을 보여줍니다. ``update_and_fetch_model`` 방법은 ``@rpc.functions.async_execution`` 을 사용하여 decorated
 되고, 트레이너로부터 호출됩니다. 각 호출에선 업데이트된 모델로 채워질 ``Future`` 오브젝트를 리턴합니다. 대부분의 트레이너로부터
 발생한 호출은 축적된 변화도를 ``.grad`` 필드로 즉시 리턴하고 PS에서 RPC 스레드를 생성합니다. 마지막 트레이너는 최적화 단계를
-트리거하고 이전에 기록된 모든 변화도를 소비합니다. 그 다음, 업데이트 된 모델로``future_model``을 설정합니다. 이 모델은
-다른 트레이너의 모든 이전 요청을``Future``객체를 통해 차례로 통지하고 업데이트 된 모델을 모든 트레이너에게 보냅니다.
+트리거하고 이전에 기록된 모든 변화도를 소비합니다. 그 다음, 업데이트 된 모델로 ``future_model`` 을 설정합니다. 이 모델은
+다른 트레이너의 모든 이전 요청을 ``Future`` 객체를 통해 차례로 통지하고 업데이트 된 모델을 모든 트레이너에게 보냅니다.
 
 
 .. code:: python
@@ -124,8 +124,8 @@ PS 클래스의 구현을 보여줍니다. ``update_and_fetch_model`` 방법은 
 트레이너들의 경우, PS의 동일한 파라미터 세트를 사용하여 초기화됩니다. 매 시퀀스마다 각 트레이너들은 먼저
 변화도를 로컬하게 생성하기 위해 포워드, 백워드 패스를 실행합니다. 그리고 각 트레이너들은 RPC를 사용하여 PS에서
 변화도를 보고하고 동일한 RPC 리퀘스트의 리턴값을 통해 업데이트된 파라미터를 반환받습니다. 트레이너의 구현에선
-대상함수가 ``@rpc.functions.async_execution``로 마크 되는지 여부는 결과에 차이가 없습니다. 트레이너는 단순히
-``rpc_sync``를 사용하여 ``update_and_fetch_model``을 호출하고 이 모델은 업데이트 된 모델이 반환 될 때까지 트레이너에서 차단합니다.
+대상함수가 ``@rpc.functions.async_execution`` 로 마크 되는지 여부는 결과에 차이가 없습니다. 트레이너는 단순히
+``rpc_sync`` 를 사용하여 ``update_and_fetch_model`` 을 호출하고 이 모델은 업데이트 된 모델이 반환 될 때까지 트레이너에서 차단합니다.
 
 .. code:: python
 
@@ -176,8 +176,8 @@ Batch-Processing CartPole Solver
 이 섹션에서는 `OpenAI Gym <https://gym.openai.com/>`__의 CartPole-v1을 batch processing RPC 의 활용 효과를 보여주기 위한 예시로써 사용합니다.
 최적의 카트폴 알고리즘이나 상극의 RL 문제를 해결하는것이 목적이 아니라, `@rpc.functions.async_execution <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.functions.async_execution>`__
 의 활용을 확인하는것 이 목적임을 유의하시기 바랍니다. 따라서 매우 간단한 정책과 보상 계산 전략을 사용하고 다중 관찰자 단일 에이전트 배치 RPC 구현에 중점을 둡니다.
-우리는 아래에 표시된 이전 튜토리얼과 유사한``Policy``모델을 사용할 것입니다. 이전 튜토리얼과 비교했을때, 생성자가 ``F.softmax``를 위한``dim``파라미터를 제어하는 추가적인
-``batch``인수를 배칭을 위해 생성하고, ``forward``함수의 ``x``인자는 여러 관찰자의 상태를 포함하므로 적절한 차수 변화가 필요합니다. 다른 모든 것은 그대로 유지됩니다.
+우리는 아래에 표시된 이전 튜토리얼과 유사한 ``Policy`` 모델을 사용할 것입니다. 이전 튜토리얼과 비교했을때, 생성자가 ``F.softmax`` 를 위한 ``dim`` 파라미터를 제어하는 추가적인
+ ``batch`` 인수를 배칭을 위해 생성하고, ``forward`` 함수의 ``x`` 인자는 여러 관찰자의 상태를 포함하므로 적절한 차수 변화가 필요합니다. 다른 모든 것은 그대로 유지됩니다.
 
 .. code:: python
 
@@ -214,8 +214,8 @@ Batch-Processing CartPole Solver
 
 
 
-``Observer``의 생성자도 역시 적절하게 조정해야합니다. 여기에서도 역시 ``Agent``함수에서 선택 액션에 사용되는 ``batch``인수를 가집니다.
-배치 모드에서는 곧 소개할 ``Agent``에서 ``select_action_batch``함수를 호출합니다. 이 함수는 `@rpc.functions.async_execution <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.functions.async_execution>`__.
+``Observer`` 의 생성자도 역시 적절하게 조정해야합니다. 여기에서도 역시 ``Agent`` 함수에서 선택 액션에 사용되는 ``batch`` 인수를 가집니다.
+배치 모드에서는 곧 소개할 ``Agent`` 에서 ``select_action_batch`` 함수를 호출합니다. 이 함수는 `@rpc.functions.async_execution <https://pytorch.org/docs/master/rpc.html#torch.distributed.rpc.functions.async_execution>`__.
 에 의해 데코레이트 됩니다.
 
 .. code:: python
@@ -233,13 +233,13 @@ Batch-Processing CartPole Solver
 
 
 이전 튜토리얼 `Getting started with Distributed RPC Framework <https://pytorch.org/tutorials/intermediate/rpc_tutorial.html>`__과 비교했을때
-관측자의 구성이 약간 달라졌습니다. 환경이 정지되었을때 종료하는 대신, 모든 에피소드에서 항상``n_steps ''반복을 실행합니다. 환경의 상태가 
+관측자의 구성이 약간 달라졌습니다. 환경이 정지되었을때 종료하는 대신, 모든 에피소드에서 항상 ``n_steps`` 반복을 실행합니다. 환경의 상태가 
 돌아오면, 관찰자는 단순히 환경을 재설정하고 다시 시작합니다. 이 디자인을 사용하면 에이전트는 모든 관찰자를 고정 된 크기의 텐서로 압축 할 수 있기 때문에
-고정된 수의 상태를 수신합니다. 매 단계에서, ``Observer``는 RPC를 사용하여 ``Agent``에 상태를 보내고 반환 값을 통한 액션을 가져옵니다. 매 에피소드가
-종료될 때 마다 모든 단계의 보상을 ``Agent``에게 리턴합니다. 이 ``run_episode`` 함수는 RPC를 사용하여 ``Agent``를 호출하는것에 유의하십시오.
-따라서이 함수의``rpc_sync``호출은 중첩 된 RPC 호출이 됩니다. 
-또한 ``Observer``에서 하나의 스레드를 차단하지 않도록 이 함수를``@ rpc.functions.async_execution``으로 표시 할 수 있습니다. 그러나
-``Observer`` 대신 ``Agent``의 병목 현상으로 인해,  ``Observer`` 프로세스의 스레드를 차단하는 것도 고려해 볼 수 있습니다.
+고정된 수의 상태를 수신합니다. 매 단계에서, ``Observer`` 는 RPC를 사용하여 ``Agent`` 에 상태를 보내고 반환 값을 통한 액션을 가져옵니다. 매 에피소드가
+종료될 때 마다 모든 단계의 보상을 ``Agent`` 에게 리턴합니다. 이 ``run_episode`` 함수는 RPC를 사용하여 ``Agent`` 를 호출하는것에 유의하십시오.
+따라서이 함수의 ``rpc_sync`` 호출은 중첩 된 RPC 호출이 됩니다. 
+또한 ``Observer`` 에서 하나의 스레드를 차단하지 않도록 이 함수를 ``@ rpc.functions.async_execution`` 으로 표시 할 수 있습니다. 그러나
+``Observer`` 대신 ``Agent`` 의 병목 현상으로 인해,  ``Observer`` 프로세스의 스레드를 차단하는 것도 고려해 볼 수 있습니다.
 
 .. code:: python
 
@@ -280,10 +280,10 @@ Batch-Processing CartPole Solver
 
 
 
-``Agent``의 생성자 역시 ``batch``인자를 가집니다. 이 인자는 액션 프롭(action probs)이 어떻게 
-배치 프로세싱 되는지 제어합니다. 배치 모드에서``saved_log_probs``에는
+``Agent`` 의 생성자 역시 ``batch`` 인자를 가집니다. 이 인자는 액션 프롭(action probs)이 어떻게 
+배치 프로세싱 되는지 제어합니다. 배치 모드에서 ``saved_log_probs`` 에는
 한 단계의 모든 관측자의 액션 프롭이 포함되어있는 텐서의 리스트를 포함합니다. 배치 프로세싱이 존재
-하지 않으면, ``saved_log_probs``는 관찰자 ID를 키값으로 가지고 관측자의 액션 프롭에 대한 리스트를
+하지 않으면, ``saved_log_probs`` 는 관찰자 ID를 키값으로 가지고 관측자의 액션 프롭에 대한 리스트를
 밸류 값으로 가지는 dictionary 입니다.
 
 
@@ -314,7 +314,7 @@ Batch-Processing CartPole Solver
             self.pending_states = len(self.ob_rrefs)
 
 
-배치 프로세싱이 아닌 ``select_acion``은 단순히 상태를 실행하여 정책을 실행하고 저장합니다.
+배치 프로세싱이 아닌 ``select_acion`` 은 단순히 상태를 실행하여 정책을 실행하고 저장합니다.
 액션 프롭을 확인하고 즉시 관찰자에게 액션을 리턴합니다.
 
 .. code:: python
@@ -335,11 +335,11 @@ Batch-Processing CartPole Solver
 
 
 
-배치 프로세싱을 활용하면 2차원 텐서에 저장된 상태인 ``self.states``는 관찰자 id를 행간 id로써 사용합니다.
+배치 프로세싱을 활용하면 2차원 텐서에 저장된 상태인 ``self.states`` 는 관찰자 id를 행간 id로써 사용합니다.
 그리고 ``Futre`` 오브젝트를 배치-생성된 콜백함수인  ``self.future_actions`` ``Future`` 에 연결함으로써,
 해당 관찰자의 ID를 사용하여 인덱싱 된 특정 행으로 채워집니다. 마지막으로 도착한 관찰자는 한번에 모든 
-배치 상태를 실행하고 그에 따라  ``self.future_actions``를 설정합니다. 이 경우 모든``self.future_actions``에 설치된 콜백 함수가 트리거되고
-반환 값은 연결된``Future``오브젝트를 를 채우는 데 사용됩니다. 이는 차례로``Agent``에게 다른 관찰자의 모든 이전 RPC 요청의 응답을 준비하고 전달하도록 알립니다.
+배치 상태를 실행하고 그에 따라  ``self.future_actions`` 를 설정합니다. 이 경우 모든 ``self.future_actions`` 에 설치된 콜백 함수가 트리거되고
+반환 값은 연결된 ``Future`` 오브젝트를 를 채우는 데 사용됩니다. 이는 차례로 ``Agent`` 에게 다른 관찰자의 모든 이전 RPC 요청의 응답을 준비하고 전달하도록 알립니다.
 
 .. code:: python
 
@@ -371,9 +371,9 @@ Batch-Processing CartPole Solver
 
 
 이제 서로 다른 RPC 기능이 함께 연결되는 방식을 정의하겠습니다. ``Agent`` 는
-모든 에피소드의 실행을 제어합니다. ``Agent``는 먼저 ``rpc_async``를 사용하여 
+모든 에피소드의 실행을 제어합니다. ``Agent`` 는 먼저 ``rpc_async`` 를 사용하여 
 모든관측자에 대한 에피소드 및 관찰자 보상으로 이루어진 리턴된 futures 를 차단합니다.
-아래 코드는 ``ob_rref.rpc_async()``RRef helper를 사용하여 ``ob_rref`` RRef의 제공된 인수로 ``run_episode``함수를 실행 합니다.
+아래 코드는 ``ob_rref.rpc_async()`` RRef helper를 사용하여 ``ob_rref`` RRef의 제공된 인수로 ``run_episode`` 함수를 실행 합니다.
 그 다음, 저장된 액션 프롭과 리턴된 관찰자 보상을 기반으로한 예상 데이터 형식을 선택하고, 훈련 단계를 시작합니다.
 마지막으로 모든 항목을 재설정하고 현재 에피소드의 보상을 표시하고 리턴합니다. 이 함수는 하나의 에피소드를 실행하는 시작점이 됩니다.
 
@@ -465,7 +465,7 @@ Batch-Processing CartPole Solver
 
 
 배치 RPC는 작업 추론을 적은 CUDA 작업으로 통합하는데 도움이 될 뿐만 아니라 오버헤드의 전달또한 
-감소시킵니다. 상단의 ``main``함수는 배치된 상태와 배치되지 않은 상태 의 두 모드를 1과 10사이의 범위의 서로 다른 수의 관측자를 
+감소시킵니다. 상단의 ``main`` 함수는 배치된 상태와 배치되지 않은 상태 의 두 모드를 1과 10사이의 범위의 서로 다른 수의 관측자를 
 사용하여 실행시킵니다. 아래 그림은 기본 인수 값을 사용하는 서로 다른 구성 크기의 실행 시간을 나타냅니다. 이
 결과로써 배치 프로세싱이 학습 속도를 향상시키는데 도움외 된다는 것을 확인할 수 있습니다.
 
