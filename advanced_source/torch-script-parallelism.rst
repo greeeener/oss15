@@ -1,24 +1,20 @@
-TorchScript의 동적 병렬 처리
+Dynamic Parallelism in TorchScript
 ==================================
-**번역**: `RushBsite </https://github.com/RushBsite>`_
 
-이 튜토리얼에서는, 우리는 TorchScript에서 *dynamic inter-op parallelism* 를 하는 구문을 소개합니다.
-이 병렬처리에는 다음과 같은 속성이 있습니다:
+In this tutorial, we introduce the syntax for doing *dynamic inter-op parallelism*
+in TorchScript. This parallelism has the following properties:
 
-* 동적 - 생성된 병렬 작업의 수와 작업 부하는 프로그램의 제어 흐름에 따라 달라질 수 있습니다.
-* inter-op - 병렬 처리는 TorchScript 프로그램 조각을 병렬로 실행하는 것과 관련이 있습니다. 이는 개별 연산자를 분할하고 연산자 작업의 하위 집합을 병렬로 실행하는 것과
-관계되는 *intra-op parallelism* 와는 구별됩니다.
-
-
-기본 구문
+* dynamic - The number of parallel tasks created and their workload can depend on the control flow of the program.
+* inter-op - The parallelism is concerned with running TorchScript program fragments in parallel. This is distinct from *intra-op parallelism*, which is concerned with splitting up individual operators and running subsets of the operator's work in parallel.
+Basic Syntax
 ------------
 
-dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니다:
+The two important APIs for dynamic parallelism are:
 
 * ``torch.jit.fork(fn : Callable[..., T], *args, **kwargs) -> torch.jit.Future[T]``
 * ``torch.jit.wait(fut : torch.jit.Future[T]) -> T``
 
-예제를 통해 이러한 작동 방식을 보여주는 좋은 방법:
+A good way to demonstrate how these work is by way of an example:
 
 .. code-block:: python
 
@@ -29,17 +25,18 @@ dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니�
 
     @torch.jit.script
     def example(x):
-        # 병렬 처리를 사용하여 `foo`를 호출:
-        # 먼저, 작업을 "fork" 합니다. 이 작업은 `x` 인수와 함께 `foo` 를 실행합니다
+        # Call `foo` using parallelism:
+        # First, we "fork" off a task. This task will run `foo` with argument `x`
         future = torch.jit.fork(foo, x)
 
-        # 일반적으로 `foo` 호출
+        # Call `foo` normally
         x_normal = foo(x)
 
-        # 둘째, 작업이 실행 중일 수 있으므로 우리는 작업을 "기다립니다".
-        # 병렬로, 결과를 사용할 수 있을 때까지 "대기" 해야합니다.
-        # "fork()" 와 "wait()" 사이에 코드 라인이 있음에 유의하십시오.
-        # 주어진 Future를 호출하면, 계산을 overlap해서 병렬로 실행할 수 있습니다.
+        # Second, we "wait" on the task. Since the task may be running in
+        # parallel, we have to "wait" for its result to become available.
+        # Notice that by having lines of code between the "fork()" and "wait()"
+        # call for a given Future, we can overlap computations so that they
+        # run in parallel.
         x_parallel = torch.jit.wait(future)
 
         return x_normal, x_parallel
@@ -47,12 +44,18 @@ dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니�
     print(example(torch.ones(1))) # (-1., -1.)
 
 
-``fork()`` 는 호출 가능한 ``fn`` 과 해당 호출 가능한  ``args`` 및  ``kwargs`` 에 대한 인수를 취하고  ``fn`` 실행을 위한 비동기 작업을 생성합니다.
-``fn`` 은 함수, 메소드, 또는 모듈 인스턴스일 수 있습니다. ``fork()`` 는  ``Future`` 라고 불리는 이 실행 결과의 값에 대한 참조를 반환합니다.
-``fork`` 는 비동기 작업을 생성한 직후에 반환되기 때문에,  ``fork()`` 호출 후 코드 라인이 실행될 때까지 ``fn`` 이 실행되지 않을 수 있습니다.
-따라서, ``wait()`` 은 비동기 작업이 완료 될때까지 대기하고 값을 반환하는데 사용됩니다.
+``fork()`` takes the callable ``fn`` and arguments to that callable ``args``
+and ``kwargs`` and creates an asynchronous task for the execution of ``fn``.
+``fn`` can be a function, method, or Module instance. ``fork()`` returns a
+reference to the value of the result of this execution, called a ``Future``.
+Because ``fork`` returns immediately after creating the async task, ``fn`` may
+not have been executed by the time the line of code after the ``fork()`` call
+is executed. Thus, ``wait()`` is used to wait for the async task to complete
+and return the value.
 
-이러한 구조는 함수 내에서 명령문 실행을 overlap하거나 (작업된 예제 section에 표시됨) 루프와 같은 다른 언어 구조로 구성 될 수 있습니다:
+These constructs can be used to overlap the execution of statements within a
+function (shown in the worked example section) or be composed with other language
+constructs like loops:
 
 .. code-block:: python
 
@@ -78,32 +81,33 @@ dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니�
 
 .. note::
 
-    빈 list of Futures를 초기화 할때, 우리는 명시적 유형 주석을  ``futures`` 에 추가해야 했습니다. TorchScript에서, 빈 컨테이너는 기본적으로
-    Tensor 값을 포함한다고 가정하므로, list constructor에
-    #  ``List[torch.jit.Future[torch.Tensor]]`` 유형으로 주석을 추가합니다.
+    When we initialized an empty list of Futures, we needed to add an explicit
+    type annotation to ``futures``. In TorchScript, empty containers default
+    to assuming they contain Tensor values, so we annotate the list constructor
+    # as being of type ``List[torch.jit.Future[torch.Tensor]]``
 
-이 예제는  ``fork()`` 를 사용하여 함수  ``foo`` 의 인스턴스 100개를 시작하고, 100개의 작업이 완료 될때까지
-기다린 다음, 결과를 합산하여  ``-100.0`` 을 반환합니다.
+This example uses ``fork()`` to launch 100 instances of the function ``foo``,
+waits on the 100 tasks to complete, then sums the results, returning ``-100.0``.
 
-
-적용 예시: 양방향 LSTM 의 ensemble
+Applied Example: Ensemble of Bidirectional LSTMs
 ------------------------------------------------
 
-이제 현실적인 예제에서 병렬 처리를 적용하고 우리가 얻을 수 있는 퍼포먼스의 종류들을 살펴보겠습니다.
-먼저, '양방향 LSTM 레이어의 ensemble' 기준 모델을 정의하겠습니다.
+Let's try to apply parallelism to a more realistic example and see what sort
+of performance we can get out of it. First, let's define the baseline model: an
+ensemble of bidirectional LSTM layers.
 
 .. code-block:: python
 
     import torch, time
 
-    # RNN parlance 에서, 우리가 살펴볼 수치들은 다음과 같습니다 :
-    # # of (시간) 단계 (T)
-    # 배치 크기 (B)
-    #  "channels" 의 숨겨진 사이즈/수 (C)
+    # In RNN parlance, the dimensions we care about are:
+    # # of time-steps (T)
+    # Batch size (B)
+    # Hidden size/number of "channels" (C)
     T, B, C = 50, 50, 1024
 
-    # 단일 "양방향 LSTM" 을 정의하는 모듈입니다. 
-    # 두 LSTM은 동일한 시퀀스에 적용되지만, 하나는 반대로 적용됩니다.
+    # A module that defines a single "bidirectional LSTM". This is simply two
+    # LSTMs applied to the same sequence, but one in reverse
     class BidirectionalRecurrentLSTM(torch.nn.Module):
         def __init__(self):
             super().__init__()
@@ -111,11 +115,11 @@ dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니�
             self.cell_b = torch.nn.LSTM(input_size=C, hidden_size=C)
 
         def forward(self, x : torch.Tensor) -> torch.Tensor:
-            # Forward 레이어
+            # Forward layer
             output_f, _ = self.cell_f(x)
 
-            # Backward 레이어. time dimension 입력을 반전 (dim 0), 
-            # 레이어 적용 후, time dimension 에서의 출력을 반전
+            # Backward layer. Flip input in the time dimension (dim 0), apply the
+            # layer, then flip the outputs in the time dimension
             x_rev = torch.flip(x, dims=[0])
             output_b, _ = self.cell_b(torch.flip(x, dims=[0]))
             output_b_rev = torch.flip(output_b, dims=[0])
@@ -123,9 +127,9 @@ dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니�
             return torch.cat((output_f, output_b_rev), dim=2)
 
 
-    # `BidirectionalRecurrentLSTM` 모듈의 "ensemble" 입니다. 
-    # ensemble 내의 모듈들은 동일한 입력에 대해 하나씩 실행한 결과들을 저장하고 더한 다음
-    # 결합된 결과를 반환합니다.
+    # An "ensemble" of `BidirectionalRecurrentLSTM` modules. The modules in the
+    # ensemble are run one-by-one on the same input then their results are
+    # stacked and summed together, returning the combined result.
     class LSTMEnsemble(torch.nn.Module):
         def __init__(self, n_models):
             super().__init__()
@@ -139,25 +143,25 @@ dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니�
                 results.append(model(x))
             return torch.stack(results).sum(dim=0)
 
-    # fork / wait 로 무엇을 할 것 인지에 대한 일대일 비교를 해봅시다.
-    # 모델을 인스턴스화 하고 TorchScript로 컴파일 합니다.
+    # For a head-to-head comparison to what we're going to do with fork/wait, let's
+    # instantiate the model and compile it with TorchScript
     ens = torch.jit.script(LSTMEnsemble(n_models=4))
 
-    # 일반적으로 임베딩 테이블에서 이 입력을 가져옵니다만, 이 데모에서는
-    # 랜덤한 데이터를 사용하겠습니다.
+    # Normally you would pull this input out of an embedding table, but for the
+    # purpose of this demo let's just use random data.
     x = torch.rand(T, B, C)
 
-    # 메모리 할당자 등을 워밍업 하기 위해 모델을 한 번 실행 해 보겠습니다.
+    # Let's run the model once to warm up things like the memory allocator
     ens(x)
 
     x = torch.rand(T, B, C)
 
-    # 얼마나 빠르게 돌아가는지 확인해봅시다!
+    # Let's see how fast it runs!
     s = time.time()
     ens(x)
     print('Inference took', time.time() - s, ' seconds')
 
-필자의 디바이스 상에서는 이 네트워크가 ``2.05`` 초 만에 실행되었습니다. 여러분들은 훨씬 더 빠르게 할수 있습니다!
+On my machine, this network runs in ``2.05`` seconds. We can do a lot better!
 
 Parallelizing Forward and Backward Layers
 -----------------------------------------
