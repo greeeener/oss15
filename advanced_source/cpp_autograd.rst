@@ -129,8 +129,8 @@ Out:
   [ CPUFloatType{2,2} ]
 
 
-``4.5`` 의 행렬(matrix)을 얻었어야 했습니다. 이 값에 도달하는 방법에 대한 설명은,
-`이 튜토리얼의 해당 섹션을 참조하십시오<https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html#gradients>`_.
+``4.5`` 의 행렬(matrix)을 얻었어야 했습니다. 이 값에 도달하는 방법에 대한 설명은, `이 튜토리얼의 해당 섹션을 참조하십시오. <https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html#gradients>`_
+
 
 이제 vector-Jacobian product의 예를 살펴 보겠습니다:
 
@@ -218,8 +218,7 @@ Out:
 C++에서의 고차 변화도 연산
 ---------------------------------------
 
-고차 변화도의 응용 프로그램 중 하나는 변화도 패널티(penalty)를 계산하는 것입니다.
- ``torch::autograd::grad`` 를 사용하여 예제를 보겠습니다:
+고차 변화도의 응용 프로그램 중 하나는 변화도 패널티(penalty)를 계산하는 것입니다.  ``torch::autograd::grad`` 를 사용하여 예제를 보겠습니다:
 
 .. code-block:: cpp
 
@@ -382,7 +381,7 @@ Out:
 ``torch::autograd::Function`` 에 대한 자세한 내용은
 `해당 설명서 <https://pytorch.org/cppdocs/api/structtorch_1_1autograd_1_1_function.html>`_ 를 참조하십시오.
 
-Python에서 C++로 autograd 코드 변역
+파이썬에서 C++로 autograd 코드 변역
 --------------------------------------------
 
 높은 수준에서 C ++에서 autograd를 사용하는 가장 쉬운 방법은 먼저 파이썬에서 작동하는 autograd 코드를 만든 다음
