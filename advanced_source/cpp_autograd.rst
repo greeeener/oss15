@@ -423,8 +423,5 @@ Python에서 C++로 autograd 코드 변역
 결론
 ----------
 
-이제 PyTorch의 C ++ autograd API에 대한 좋은 개요가 있어야합니다.
- `여기 <https://github.com/pytorch/examples/tree/master/cpp/autograd>`_ 에서 이 노트에 표시된 코드 예제를 찾을 수 있습니다.
-항상 그렇듯이, 문제가 발생하거나 질문이 있는 경우
- `포럼 <https://discuss.pytorch.org/>`_
-또는 `GitHub issues <https://github.com/pytorch/pytorch/issues>`_ 에 올려주십시오.
+이제 PyTorch의 C ++ autograd API에 대한 좋은 개요가 있어야합니다. `여기 <https://github.com/pytorch/examples/tree/master/cpp/autograd>`_ 에서 이 노트에 표시된 코드 예제를 찾을 수 있습니다.
+항상 그렇듯이, 문제가 발생하거나 질문이 있는 경우 `포럼 <https://discuss.pytorch.org/>`_ 또는 `GitHub issues <https://github.com/pytorch/pytorch/issues>`_ 에 올려주십시오.
