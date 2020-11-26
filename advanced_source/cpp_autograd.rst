@@ -129,8 +129,8 @@ Out:
   [ CPUFloatType{2,2} ]
 
 
-``4.5`` 의 행렬(matrix)을 얻었어야 했습니다. 이 값에 도달하는 방법에 대한 설명은,
-`이 튜토리얼의 해당 섹션을 참조하십시오<https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html#gradients>`_ .
+``4.5`` 의 행렬(matrix)을 얻었어야 했습니다. 이 값에 도달하는 방법에 대한 설명은, `이 튜토리얼의 해당 섹션을 참조하십시오. <https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html#gradients>`_
+
 
 이제 vector-Jacobian product의 예를 살펴 보겠습니다:
 
