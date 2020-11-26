@@ -1,7 +1,7 @@
 RPC를 이용한 분산 파이프라인 병렬 처리
 ==========================================
 **저자**: `Shen Li <https://mrshenli.github.io/>`_
-**번역**: `양수진 </https://github.com/musuys>`_
+**번역**: `양수진 </https://github.com/musuys>`_ , `RushBsite </https://github.com/RushBsite>`_
 
 선수과목(Prerequisites):
 

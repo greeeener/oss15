@@ -1,5 +1,6 @@
 TorchScript의 동적 병렬 처리
 ==================================
+**번역**: `RushBsite </https://github.com/RushBsite>`_
 
 이 튜토리얼에서는, 우리는 TorchScript에서 *dynamic inter-op parallelism* 를 하는 구문을 소개합니다.
 이 병렬처리에는 다음과 같은 속성이 있습니다:
@@ -84,25 +85,25 @@ dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니�
 이 예제는  ``fork()`` 를 사용하여 함수  ``foo`` 의 인스턴스 100개를 시작하고, 100개의 작업이 완료 될때까지
 기다린 다음, 결과를 합산하여  ``-100.0`` 을 반환합니다.
 
-Applied Example: Ensemble of Bidirectional LSTMs
+
+적용 예시: 양방향 LSTM 의 ensemble
 ------------------------------------------------
 
-Let's try to apply parallelism to a more realistic example and see what sort
-of performance we can get out of it. First, let's define the baseline model: an
-ensemble of bidirectional LSTM layers.
+이제 현실적인 예제에서 병렬 처리를 적용하고 우리가 얻을 수 있는 퍼포먼스의 종류들을 살펴보겠습니다.
+먼저, '양방향 LSTM 레이어의 ensemble' 기준 모델을 정의하겠습니다.
 
 .. code-block:: python
 
     import torch, time
 
-    # In RNN parlance, the dimensions we care about are:
-    # # of time-steps (T)
-    # Batch size (B)
-    # Hidden size/number of "channels" (C)
+    # RNN parlance 에서, 우리가 살펴볼 수치들은 다음과 같습니다 :
+    # # of (시간) 단계 (T)
+    # 배치 크기 (B)
+    #  "channels" 의 숨겨진 사이즈/수 (C)
     T, B, C = 50, 50, 1024
 
-    # A module that defines a single "bidirectional LSTM". This is simply two
-    # LSTMs applied to the same sequence, but one in reverse
+    # 단일 "양방향 LSTM" 을 정의하는 모듈입니다. 
+    # 두 LSTM은 동일한 시퀀스에 적용되지만, 하나는 반대로 적용됩니다.
     class BidirectionalRecurrentLSTM(torch.nn.Module):
         def __init__(self):
             super().__init__()
@@ -110,11 +111,11 @@ ensemble of bidirectional LSTM layers.
             self.cell_b = torch.nn.LSTM(input_size=C, hidden_size=C)
 
         def forward(self, x : torch.Tensor) -> torch.Tensor:
-            # Forward layer
+            # Forward 레이어
             output_f, _ = self.cell_f(x)
 
-            # Backward layer. Flip input in the time dimension (dim 0), apply the
-            # layer, then flip the outputs in the time dimension
+            # Backward 레이어. time dimension 입력을 반전 (dim 0), 
+            # 레이어 적용 후, time dimension 에서의 출력을 반전
             x_rev = torch.flip(x, dims=[0])
             output_b, _ = self.cell_b(torch.flip(x, dims=[0]))
             output_b_rev = torch.flip(output_b, dims=[0])
@@ -122,9 +123,9 @@ ensemble of bidirectional LSTM layers.
             return torch.cat((output_f, output_b_rev), dim=2)
 
 
-    # An "ensemble" of `BidirectionalRecurrentLSTM` modules. The modules in the
-    # ensemble are run one-by-one on the same input then their results are
-    # stacked and summed together, returning the combined result.
+    # `BidirectionalRecurrentLSTM` 모듈의 "ensemble" 입니다. 
+    # ensemble 내의 모듈들은 동일한 입력에 대해 하나씩 실행한 결과들을 저장하고 더한 다음
+    # 결합된 결과를 반환합니다.
     class LSTMEnsemble(torch.nn.Module):
         def __init__(self, n_models):
             super().__init__()
@@ -138,25 +139,25 @@ ensemble of bidirectional LSTM layers.
                 results.append(model(x))
             return torch.stack(results).sum(dim=0)
 
-    # For a head-to-head comparison to what we're going to do with fork/wait, let's
-    # instantiate the model and compile it with TorchScript
+    # fork / wait 로 무엇을 할 것 인지에 대한 일대일 비교를 해봅시다.
+    # 모델을 인스턴스화 하고 TorchScript로 컴파일 합니다.
     ens = torch.jit.script(LSTMEnsemble(n_models=4))
 
-    # Normally you would pull this input out of an embedding table, but for the
-    # purpose of this demo let's just use random data.
+    # 일반적으로 임베딩 테이블에서 이 입력을 가져옵니다만, 이 데모에서는
+    # 랜덤한 데이터를 사용하겠습니다.
     x = torch.rand(T, B, C)
 
-    # Let's run the model once to warm up things like the memory allocator
+    # 메모리 할당자 등을 워밍업 하기 위해 모델을 한 번 실행 해 보겠습니다.
     ens(x)
 
     x = torch.rand(T, B, C)
 
-    # Let's see how fast it runs!
+    # 얼마나 빠르게 돌아가는지 확인해봅시다!
     s = time.time()
     ens(x)
     print('Inference took', time.time() - s, ' seconds')
 
-On my machine, this network runs in ``2.05`` seconds. We can do a lot better!
+필자의 디바이스 상에서는 이 네트워크가 ``2.05`` 초 만에 실행되었습니다. 여러분들은 훨씬 더 빠르게 할수 있습니다!
 
 Parallelizing Forward and Backward Layers
 -----------------------------------------
