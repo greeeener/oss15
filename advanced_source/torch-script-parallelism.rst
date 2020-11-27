@@ -1,20 +1,22 @@
-Dynamic Parallelism in TorchScript
-==================================
+TorchScript의 동적 병렬 처리(DYNAMIC PARALLELISM)
+==================================================
 
-In this tutorial, we introduce the syntax for doing *dynamic inter-op parallelism*
-in TorchScript. This parallelism has the following properties:
+이 튜토리얼에서는, 우리는 TorchScript에서 *dynamic inter-op parallelism* 를 하는 구문(syntax)을 소개합니다.
+이 병렬처리에는 다음과 같은 속성이 있습니다:
 
-* dynamic - The number of parallel tasks created and their workload can depend on the control flow of the program.
-* inter-op - The parallelism is concerned with running TorchScript program fragments in parallel. This is distinct from *intra-op parallelism*, which is concerned with splitting up individual operators and running subsets of the operator's work in parallel.
-Basic Syntax
+* 동적(dynamic) - 생성된 병렬 작업의 수와 작업 부하는 프로그램의 제어 흐름에 따라 달라질 수 있습니다.
+* inter-op - 병렬 처리는 TorchScript 프로그램 조각을 병렬로 실행하는 것과 관련이 있습니다. 이는 개별 연산자를 분할하고 연산자 작업의 하위 집합을 병렬로 실행하는 것과
+관계되는 *intra-op parallelism* 와는 구별됩니다.
+
+기본 구문
 ------------
 
-The two important APIs for dynamic parallelism are:
+dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니다:
 
 * ``torch.jit.fork(fn : Callable[..., T], *args, **kwargs) -> torch.jit.Future[T]``
 * ``torch.jit.wait(fut : torch.jit.Future[T]) -> T``
 
-A good way to demonstrate how these work is by way of an example:
+예제를 통해 이러한 작동 방식을 보여주는 좋은 방법:
 
 .. code-block:: python
 
@@ -25,18 +27,17 @@ A good way to demonstrate how these work is by way of an example:
 
     @torch.jit.script
     def example(x):
-        # Call `foo` using parallelism:
-        # First, we "fork" off a task. This task will run `foo` with argument `x`
+        # 병렬 처리를 사용하여 `foo`를 호출:
+        # 먼저, 작업을 "fork" 합니다. 이 작업은 `x` 인자(argument)와 함께 `foo` 를 실행합니다
         future = torch.jit.fork(foo, x)
 
-        # Call `foo` normally
+        # 일반적으로 `foo` 호출
         x_normal = foo(x)
 
-        # Second, we "wait" on the task. Since the task may be running in
-        # parallel, we have to "wait" for its result to become available.
-        # Notice that by having lines of code between the "fork()" and "wait()"
-        # call for a given Future, we can overlap computations so that they
-        # run in parallel.
+        # 둘째, 작업이 실행 중일 수 있으므로 우리는 작업을 "기다립니다".
+        # 병렬로, 결과를 사용할 수 있을 때까지 "대기" 해야합니다.
+        # "fork()" 와 "wait()" 사이에 코드 라인이 있음에 유의하십시오.
+        # 주어진 Future를 호출하면, 계산을 오버랩(overlap)해서 병렬로 실행할 수 있습니다.
         x_parallel = torch.jit.wait(future)
 
         return x_normal, x_parallel
@@ -44,18 +45,12 @@ A good way to demonstrate how these work is by way of an example:
     print(example(torch.ones(1))) # (-1., -1.)
 
 
-``fork()`` takes the callable ``fn`` and arguments to that callable ``args``
-and ``kwargs`` and creates an asynchronous task for the execution of ``fn``.
-``fn`` can be a function, method, or Module instance. ``fork()`` returns a
-reference to the value of the result of this execution, called a ``Future``.
-Because ``fork`` returns immediately after creating the async task, ``fn`` may
-not have been executed by the time the line of code after the ``fork()`` call
-is executed. Thus, ``wait()`` is used to wait for the async task to complete
-and return the value.
+``fork()`` 는 호출 가능한 ``fn`` 과 해당 호출 가능한  ``args`` 및  ``kwargs`` 에 대한 인자를 취하고  ``fn`` 실행을 위한 비동기(asynchronous) 작업을 생성합니다.
+``fn`` 은 함수, 메소드, 또는 모듈 인스턴스일 수 있습니다. ``fork()`` 는  ``Future`` 라고 불리는 이 실행 결과의 값에 대한 참조(reference)를 반환합니다.
+``fork`` 는 비동기 작업을 생성한 직후에 반환되기 때문에,  ``fork()`` 호출 후 코드 라인이 실행될 때까지 ``fn`` 이 실행되지 않을 수 있습니다.
+따라서, ``wait()`` 은 비동기 작업이 완료 될때까지 대기하고 값을 반환하는데 사용됩니다.
 
-These constructs can be used to overlap the execution of statements within a
-function (shown in the worked example section) or be composed with other language
-constructs like loops:
+이러한 구조는 함수 내에서 명령문 실행을 오버랩하거나 (작업된 예제 섹션에 표시됨) 루프와 같은 다른 언어 구조로 구성 될 수 있습니다:
 
 .. code-block:: python
 
@@ -81,13 +76,12 @@ constructs like loops:
 
 .. note::
 
-    When we initialized an empty list of Futures, we needed to add an explicit
-    type annotation to ``futures``. In TorchScript, empty containers default
-    to assuming they contain Tensor values, so we annotate the list constructor
-    # as being of type ``List[torch.jit.Future[torch.Tensor]]``
+    Future의 빈 리스트(list)를 초기화할때, 우리는 명시적 유형 주석을  ``futures`` 에 추가해야 했습니다.
+    TorchScript에서 빈 컨테이너(container)는 기본적으로 tensor 값을 포함한다고 가정하므로
+    리스트 생성자(constructor) #에  ``List[torch.jit.Future[torch.Tensor]]`` 유형의 주석을 달았습니다.
 
-This example uses ``fork()`` to launch 100 instances of the function ``foo``,
-waits on the 100 tasks to complete, then sums the results, returning ``-100.0``.
+이 예제는  ``fork()`` 를 사용하여 함수  ``foo`` 의 인스턴스 100개를 시작하고, 100개의 작업이 완료 될때까지
+대기한 다음, 결과를 합산하여  ``-100.0`` 을 반환합니다.
 
 Applied Example: Ensemble of Bidirectional LSTMs
 ------------------------------------------------
