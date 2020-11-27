@@ -157,89 +157,83 @@ ensemble of bidirectional LSTM layers.
 
 On my machine, this network runs in ``2.05`` seconds. We can do a lot better!
 
-Parallelizing Forward and Backward Layers
+Forward, Backward 계층(Layer) 병렬화
 -----------------------------------------
 
-A very simple thing we can do is parallelize the forward and backward layers
-within ``BidirectionalRecurrentLSTM``. For this, the structure of the computation
-is static, so we don't actually even need any loops. Let's rewrite the ``forward``
-method of ``BidirectionalRecurrentLSTM`` like so:
+``BidirectionalRecurrentLSTM`` 내에서 forward, backward 계층들을 병렬화하는 것은 우리가 할 수 있는 아주 간단한 일입니다.
+이를 위해 계산 구조는 고정되어 우리는 어떤 루프도 필요로 하지 않습니다.
+``BidirectionalRecurrentLSTM``의 ``forward`` 메소드를 다음과 같이 재작성해봅시다:
 
 .. code-block:: python
 
         def forward(self, x : torch.Tensor) -> torch.Tensor:
-            # Forward layer - fork() so this can run in parallel to the backward
-            # layer
+            # Forward layer - fork() 이므로 이는 backward와 병렬로 실행될 수 있음.
             future_f = torch.jit.fork(self.cell_f, x)
 
-            # Backward layer. Flip input in the time dimension (dim 0), apply the
-            # layer, then flip the outputs in the time dimension
+            # Backward 계층. 시간 차원(time dimension)(dim 0)에서 입력 flip (dim 0),
+            # 계층 적용, 그리고 시간 차원에서 출력 flip
             x_rev = torch.flip(x, dims=[0])
             output_b, _ = self.cell_b(torch.flip(x, dims=[0]))
             output_b_rev = torch.flip(output_b, dims=[0])
 
-            # Retrieve the output from the forward layer. Note this needs to happen
-            # *after* the stuff we want to parallelize with
+            # forward 계층에서 출력을 검색.
+            # 이는 우리가 병렬화하려는 작업 *이후*에 일어나야함을 주의.
             output_f, _ = torch.jit.wait(future_f)
 
             return torch.cat((output_f, output_b_rev), dim=2)
 
-In this example, ``forward()`` delegates execution of ``cell_f`` to another thread,
-while it continues to execute ``cell_b``. This causes the execution of both the
-cells to be overlapped with each other.
+이 예시에서, ``forward()``는 ``cell_b``의 실행을 계속하는 동안 ``cell_f``를 다른 스레드로 위임합니다.
+이는 두 셀(cell)들의 실행이 서로 오버랩됩니다.
 
-Running the script again with this simple modification yields a runtime of
-``1.71`` seconds for an improvement of ``17%``!
+이 간단한 수정과 함께 스크립트를 다시 실행하면 ``1.71``초의 런타임으로 ``17%``만큼 속도가 향상되었습니다!
 
-Aside: Visualizing Parallelism
+Aside: 병렬화 시각화 (Visualizing Parallelism)
 ------------------------------
 
-We're not done optimizing our model but it's worth introducing the tooling we
-have for visualizing performance. One important tool is the `PyTorch profiler <https://pytorch.org/docs/stable/autograd.html#profiler>`_.
+우리는 아직 모델을 최적화시키는 것을 끝내지 않았지만 성능 시각화를 위한 도구를 설명해 볼 만 합니다.
+한 가지 중요한 도구는  `PyTorch 프로파일러(profiler) <https://pytorch.org/docs/stable/autograd.html#profiler>`_입니다.
 
-Let's use the profiler along with the Chrome trace export functionality to
-visualize the performance of our parallelized model:
+Chrome 추적 내보내기 기능(trace export functionality)과 함께 프로파일러를 사용해
+우리의 병렬화된 모델의 성능을 시각화해봅시다:
 
 .. code-block:: python
     with torch.autograd.profiler.profile() as prof:
         ens(x)
     prof.export_chrome_trace('parallel.json')
 
-This snippet of code will write out a file named ``parallel.json``. If you
-navigate Google Chrome to ``chrome://tracing``, click the ``Load`` button, and
-load in that JSON file, you should see a timeline like the following:
+이 작은 코드 조각은 ``parallel.json`` 파일을 작성합니다.
+만약 당신이 Google Chrome에서 ``chrome://tracing``으로 이동하여 ``Load`` 버튼을 클릭하고
+JSON 파일을 로드하면 다음과 같은 타임라인을 볼게 될 겁니다:
 
 .. image:: https://i.imgur.com/rm5hdG9.png
 
-The horizontal axis of the timeline represents time and the vertical axis
-represents threads of execution. As we can see, we are running two ``lstm``
-instances at a time. This is the result of our hard work parallelizing the
-bidirectional layers!
+타임라인의 가로축은 시간을, 세로축은 실행 스레드를 나타냅니다.
+보다시피 한 번에 두 개의 ``lstm``를 실행하고 있습니다.
+이것은 bidirectional(forward, backward) 계층을 병렬화하기 위해 노력한 결과입니다.
 
-Parallelizing Models in the Ensemble
+앙상블(Ensemble) 에서의 병렬화 모델
 ------------------------------------
 
-You may have noticed that there is a further parallelization opportunity in our
-code: we can also run the models contained in ``LSTMEnsemble`` in parallel with
-each other. The way to do that is simple enough, this is how we should change
-the ``forward`` method of ``LSTMEnsemble``:
+당신은 이 코드에 더 많은 병렬화 기회가 있다는 것을 눈치챘을지도 모릅니다:
+우리는 ``LSTMEnsemble``에 포함된 모델들을 서로 병렬로 실행할 수도 있습니다.
+이렇게 하기 위한 방법은 아주 간단합니다. 바로 ``LSTMEnsemble``의 ``forward`` 메소드를 변경하는 방법입니다.
 
 .. code-block:: python
 
         def forward(self, x : torch.Tensor) -> torch.Tensor:
-            # Launch tasks for each model
+            # 각 모델을 위한 작업 실행
             futures : List[torch.jit.Future[torch.Tensor]] = []
             for model in self.models:
                 futures.append(torch.jit.fork(model, x))
 
-            # Collect the results from the launched tasks
+            # 실행된 작업들에서 결과 수집
             results : List[torch.Tensor] = []
             for future in futures:
                 results.append(torch.jit.wait(future))
 
             return torch.stack(results).sum(dim=0)
 
-Or, if you value brevity, we can use list comprehensions:
+또는, 만약 당신이 간결함을 중요하게 생각한다면 목록 이해력(list comprehension)를 사용할 수 있습니다.
 
 .. code-block:: python
 
@@ -248,25 +242,24 @@ Or, if you value brevity, we can use list comprehensions:
             results = [torch.jit.wait(fut) for fut in futures]
             return torch.stack(results).sum(dim=0)
 
-Like described in the intro, we've used loops to fork off tasks for each of the
-models in our ensemble. We've then used another loop to wait for all of the
-tasks to be completed. This provides even more overlap of computation.
+인트로에서 설명했듯이, 우리는 루프를 사용해 앙상블의 각 모델들에 대한 작업을 나눴습니다.
+그리고 모든 작업이 완료될 때까지 기다릴 다른 루프를 사용했습니다.
+이는 더 많은 계산의 오버랩을 제공합니다.
 
-With this small update, the script runs in ``1.4`` seconds, for a total speedup
-of ``32%``! Pretty good for two lines of code.
+이 작은 업데이트로 스크립트는 ``1.4`` 안에 실행되어 총 ``32%``만큼 속도가 향상되었습니다!
+단 두 줄의 코드인 것에 비해 좋은 효과입니다.
 
-We can also use the Chrome tracer again to see where's going on:
+또한 Chrome 추적기(tracer)를 다시 사용해 진행 상황을 볼 수 있습니다:
 
 .. image:: https://i.imgur.com/kA0gyQm.png
 
-We can now see that all ``LSTM`` instances are being run fully in parallel.
+이제 모든 ``LSTM`` 인스턴스가 완전히 병렬로 실행되는 것을 볼 수 있습니다.
 
-Conclusion
+결론
 ----------
 
-In this tutorial, we learned about ``fork()`` and ``wait()``, the basic APIs
-for doing dynamic, inter-op parallelism in TorchScript. We saw a few typical
-usage patterns for using these functions to parallelize the execution of
-functions, methods, or ``Modules`` in TorchScript code. Finally, we worked through
-an example of optimizing a model using this technique and explored the performance
-measurement and visualization tooling available in PyTorch.
+이 튜토리얼에서 우리는 TorchScript에서 dynamic, inter-op parallelism를 수행하기 위한 기본 API인
+``fork()``와 ``wait()``에 대해 배웠습니다. 이러한 함수들을 사용해 TorchScript 코드에서
+함수, 메소드, 또는 ``Modules``의 실행을 병렬화하는 몇 가지 일반적인 사용 패턴도 보았습니다.
+마지막으로, 이 기술을 사용해 모델을 최적화하는 예를 훑어보고, PyTorch에서 사용 가능
+성능 측정 및 시각화 도구를 살펴보았습니다.
