@@ -28,7 +28,7 @@ dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니�
     @torch.jit.script
     def example(x):
         # 병렬 처리를 사용하여 `foo`를 호출:
-        # 먼저, 작업을 "fork" 합니다. 이 작업은 `x` 인자(argument)와 함께 `foo` 를 실행합니다
+        # 먼저, 작업을 "fork" 합니다. 이 작업은 `x` 인자(argument)와 함께 `foo` 를 실행합니다.
         future = torch.jit.fork(foo, x)
 
         # 일반적으로 `foo` 호출
@@ -83,25 +83,24 @@ dynamic 병렬 처리를 위한 두가지 중요한 API는 다음과 같습니�
 이 예제는  ``fork()`` 를 사용하여 함수  ``foo`` 의 인스턴스 100개를 시작하고, 100개의 작업이 완료 될때까지
 대기한 다음, 결과를 합산하여  ``-100.0`` 을 반환합니다.
 
-Applied Example: Ensemble of Bidirectional LSTMs
+적용된 예시: 양방향(bidirectional) LSTMs의 앙상블(Ensemble)
 ------------------------------------------------
 
-Let's try to apply parallelism to a more realistic example and see what sort
-of performance we can get out of it. First, let's define the baseline model: an
-ensemble of bidirectional LSTM layers.
+보다 현실적인 예시에 병렬화를 적용하고 어떤 종류의 성능을 얻을 수 있는지 살펴봅시다.
+먼저, 양방향 LSTM 계층의 앙상블인 기준 모델을 정의합시다.
 
 .. code-block:: python
 
     import torch, time
 
-    # In RNN parlance, the dimensions we care about are:
-    # # of time-steps (T)
-    # Batch size (B)
-    # Hidden size/number of "channels" (C)
+    # RNN 용어에서 우리가 관심 갖는 차원:
+    # 시간 단계의 # (T)
+    # Batch 크기 (B)
+    # "channels"의 숨겨진 크기/숫자 (C)
     T, B, C = 50, 50, 1024
 
-    # A module that defines a single "bidirectional LSTM". This is simply two
-    # LSTMs applied to the same sequence, but one in reverse
+    # 단일 "양방향 LSTM"을 정의하는 모듈
+    # 이는 단순히 동일한 시퀀스에 적용된 두 개의 LSTMs이지만 하나는 반대로 적용됩니다.
     class BidirectionalRecurrentLSTM(torch.nn.Module):
         def __init__(self):
             super().__init__()
@@ -109,11 +108,11 @@ ensemble of bidirectional LSTM layers.
             self.cell_b = torch.nn.LSTM(input_size=C, hidden_size=C)
 
         def forward(self, x : torch.Tensor) -> torch.Tensor:
-            # Forward layer
+            # Forward 계층
             output_f, _ = self.cell_f(x)
 
-            # Backward layer. Flip input in the time dimension (dim 0), apply the
-            # layer, then flip the outputs in the time dimension
+            # Backward 계층. 시간 차원(time dimension)(dim 0)에서 입력 flip (dim 0),
+            # 계층 적용, 그리고 시간 차원에서 출력 flip
             x_rev = torch.flip(x, dims=[0])
             output_b, _ = self.cell_b(torch.flip(x, dims=[0]))
             output_b_rev = torch.flip(output_b, dims=[0])
@@ -121,9 +120,8 @@ ensemble of bidirectional LSTM layers.
             return torch.cat((output_f, output_b_rev), dim=2)
 
 
-    # An "ensemble" of `BidirectionalRecurrentLSTM` modules. The modules in the
-    # ensemble are run one-by-one on the same input then their results are
-    # stacked and summed together, returning the combined result.
+    # `BidirectionalRecurrentLSTM` 모듈의 "ensemble"
+    # 앙상블의 모듈은 같은 입력에서 하나하나씩 실행되고, 결과들이 누적되고 합산되어 결합된 결과를 반환합니다.
     class LSTMEnsemble(torch.nn.Module):
         def __init__(self, n_models):
             super().__init__()
@@ -137,25 +135,25 @@ ensemble of bidirectional LSTM layers.
                 results.append(model(x))
             return torch.stack(results).sum(dim=0)
 
-    # For a head-to-head comparison to what we're going to do with fork/wait, let's
-    # instantiate the model and compile it with TorchScript
+    # fork/wait으로 실행할 것들의 직접 비교를 위해
+    # 모듈을 인스턴스화하고 TorchScript를 통해 컴파일합시다.
     ens = torch.jit.script(LSTMEnsemble(n_models=4))
 
-    # Normally you would pull this input out of an embedding table, but for the
-    # purpose of this demo let's just use random data.
+    # 일반적으로 임베딩 테이블(embedding table)에서 입력을 가져오지만,
+    # 목적을 위해 이 데모에서는 랜덤 데이터를 사용하겠습니다.
     x = torch.rand(T, B, C)
 
-    # Let's run the model once to warm up things like the memory allocator
+    # 메모리 할당자(memory allocator)
     ens(x)
 
     x = torch.rand(T, B, C)
 
-    # Let's see how fast it runs!
+    # 얼마나 빠르게 실행되는지 봅시다!
     s = time.time()
     ens(x)
     print('Inference took', time.time() - s, ' seconds')
 
-On my machine, this network runs in ``2.05`` seconds. We can do a lot better!
+컴퓨터에서 네트워크가 ``2.05``초에 실행되었습니다. 우리는 더 잘 할 수 있습니다!
 
 Forward, Backward 계층(Layer) 병렬화
 -----------------------------------------
@@ -185,7 +183,7 @@ Forward, Backward 계층(Layer) 병렬화
 이 예시에서, ``forward()``는 ``cell_b``의 실행을 계속하는 동안 ``cell_f``를 다른 스레드로 위임합니다.
 이는 두 셀(cell)들의 실행이 서로 오버랩됩니다.
 
-이 간단한 수정과 함께 스크립트를 다시 실행하면 ``1.71``초의 런타임으로 ``17%``만큼 속도가 향상되었습니다!
+이 간단한 수정과 함께 스크립트를 다시 실행하면 ``1.71``초의 런타임으로 ``17%``만큼 향상되었습니다!
 
 Aside: 병렬화 시각화 (Visualizing Parallelism)
 ------------------------------
@@ -203,15 +201,15 @@ Chrome 추적 내보내기 기능(trace export functionality)과 함께 프로�
 
 이 작은 코드 조각은 ``parallel.json`` 파일을 작성합니다.
 만약 당신이 Google Chrome에서 ``chrome://tracing``으로 이동하여 ``Load`` 버튼을 클릭하고
-JSON 파일을 로드하면 다음과 같은 타임라인을 볼게 될 겁니다:
+JSON 파일을 로드하면 다음과 같은 타임라인을 보게 될 겁니다:
 
 .. image:: https://i.imgur.com/rm5hdG9.png
 
 타임라인의 가로축은 시간을, 세로축은 실행 스레드를 나타냅니다.
 보다시피 한 번에 두 개의 ``lstm``를 실행하고 있습니다.
-이것은 bidirectional(forward, backward) 계층을 병렬화하기 위해 노력한 결과입니다.
+이것은 양방향(forward, backward) 계층을 병렬화하기 위해 노력한 결과입니다.
 
-앙상블(Ensemble) 에서의 병렬화 모델
+앙상블에서의 병렬화 모델
 ------------------------------------
 
 당신은 이 코드에 더 많은 병렬화 기회가 있다는 것을 눈치챘을지도 모릅니다:
@@ -246,7 +244,7 @@ JSON 파일을 로드하면 다음과 같은 타임라인을 볼게 될 겁니�
 그리고 모든 작업이 완료될 때까지 기다릴 다른 루프를 사용했습니다.
 이는 더 많은 계산의 오버랩을 제공합니다.
 
-이 작은 업데이트로 스크립트는 ``1.4`` 안에 실행되어 총 ``32%``만큼 속도가 향상되었습니다!
+이 작은 업데이트로 스크립트는 ``1.4``초에 실행되어 총 ``32%``만큼 속도가 향상되었습니다!
 단 두 줄의 코드인 것에 비해 좋은 효과입니다.
 
 또한 Chrome 추적기(tracer)를 다시 사용해 진행 상황을 볼 수 있습니다:
@@ -261,5 +259,5 @@ JSON 파일을 로드하면 다음과 같은 타임라인을 볼게 될 겁니�
 이 튜토리얼에서 우리는 TorchScript에서 dynamic, inter-op parallelism를 수행하기 위한 기본 API인
 ``fork()``와 ``wait()``에 대해 배웠습니다. 이러한 함수들을 사용해 TorchScript 코드에서
 함수, 메소드, 또는 ``Modules``의 실행을 병렬화하는 몇 가지 일반적인 사용 패턴도 보았습니다.
-마지막으로, 이 기술을 사용해 모델을 최적화하는 예를 훑어보고, PyTorch에서 사용 가능
+마지막으로, 이 기술을 사용해 모델을 최적화하는 예를 훑어보고, PyTorch에서 사용 가능한
 성능 측정 및 시각화 도구를 살펴보았습니다.
